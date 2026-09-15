@@ -4,6 +4,11 @@ class PlansApiConfig {
     required this.apiKey,
   });
 
+  static const managed = PlansApiConfig(
+    baseUrl: 'https://hsabat.farahdent.com',
+    apiKey: '533dbf61ca7bdd5532aaebc03e1ea2e9136b9bb4c7f3320c910ddd0d3715375a',
+  );
+
   final String baseUrl;
   final String apiKey;
 

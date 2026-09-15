@@ -114,9 +114,25 @@ class MainDashboardController extends ChangeNotifier {
   Future<void> initialize() async {
     await _loadSelectionPreferences();
     await _selectionRepository.ensureSnapshotSynced();
+    await _bootstrapManagedBackup();
     await _loadDoctors();
     unawaited(_runSilentDailyBackup());
     _startBackupWatchdog();
+  }
+
+  PlansApiConfig get _managedPlansConfig => PlansApiConfig.managed;
+
+  Future<void> _bootstrapManagedBackup() async {
+    final config = _managedPlansConfig;
+    try {
+      await _plansApiSettingsRepository.save(config);
+      await _installmentPlanRepository.localStore.saveBackupConfig(config);
+      await _installmentPlanRepository.enableAutomaticDailyBackup(config: config);
+      autoBackupStatusLabel =
+          'المهمة اليومية: مفعّلة تلقائياً (كل يوم 02:00 حتى لو التطبيق مغلق)';
+    } catch (_) {
+      autoBackupStatusLabel = 'المهمة اليومية: تعذّر التفعيل التلقائي';
+    }
   }
 
   void _startBackupWatchdog() {
@@ -197,52 +213,35 @@ class MainDashboardController extends ChangeNotifier {
   }
 
   Future<void> savePlansApiSettings() async {
-    final config = PlansApiConfig(
-      baseUrl: plansApiBaseUrlController.text.trim(),
-      apiKey: plansApiKeyController.text.trim(),
-    );
+    final config = _managedPlansConfig;
     await _plansApiSettingsRepository.save(config);
-    if (config.isConfigured) {
-      await _installmentPlanRepository.localStore.saveBackupConfig(config);
-      try {
-        await _installmentPlanRepository.enableAutomaticDailyBackup(
-          config: config,
-        );
-        autoBackupStatusLabel =
-            'المهمة اليومية: مفعّلة (كل يوم 02:00 حتى لو التطبيق مغلق)';
-        statusMessage =
-            'تم الحفظ وتفعيل الرفع اليومي التلقائي عبر Windows Scheduler.';
-      } catch (error) {
-        autoBackupStatusLabel = 'المهمة اليومية: تعذّر التفعيل';
-        statusMessage =
-            'حُفظت الإعدادات، لكن فشل تفعيل المهمة التلقائية: $error';
-      }
-    } else {
-      autoBackupStatusLabel = 'المهمة اليومية: غير مفعّلة';
-      statusMessage = 'تم الحفظ (السيرفر غير مفعّل — التخزين المحلي يعمل فقط).';
+    await _installmentPlanRepository.localStore.saveBackupConfig(config);
+    try {
+      await _installmentPlanRepository.enableAutomaticDailyBackup(
+        config: config,
+      );
+      autoBackupStatusLabel =
+          'المهمة اليومية: مفعّلة تلقائياً (كل يوم 02:00 حتى لو التطبيق مغلق)';
+      statusMessage = 'تم تثبيت إعدادات الخادم التلقائية وتفعيل الرفع اليومي.';
+    } catch (error) {
+      autoBackupStatusLabel = 'المهمة اليومية: تعذّر التفعيل';
+      statusMessage = 'فشل تفعيل المهمة التلقائية: $error';
     }
     notifyListeners();
   }
 
   Future<void> enableAutomaticDailyBackup() async {
-    final config = PlansApiConfig(
-      baseUrl: plansApiBaseUrlController.text.trim(),
-      apiKey: plansApiKeyController.text.trim(),
-    );
-    if (!config.isConfigured) {
-      statusMessage = 'أدخل عنوان السيرفر ومفتاح API أولاً.';
-      notifyListeners();
-      return;
-    }
+    final config = _managedPlansConfig;
 
     _setBusy('جاري تفعيل الرفع اليومي التلقائي...');
     try {
       await _plansApiSettingsRepository.save(config);
+      await _installmentPlanRepository.localStore.saveBackupConfig(config);
       await _installmentPlanRepository.enableAutomaticDailyBackup(
         config: config,
       );
       autoBackupStatusLabel =
-          'المهمة اليومية: مفعّلة (كل يوم 02:00 حتى لو التطبيق مغلق)';
+          'المهمة اليومية: مفعّلة تلقائياً (كل يوم 02:00 حتى لو التطبيق مغلق)';
       statusMessage =
           'تم تفعيل باك أب يومي تلقائي عبر Windows Task Scheduler.';
     } catch (error) {
@@ -253,15 +252,7 @@ class MainDashboardController extends ChangeNotifier {
   }
 
   Future<void> testPlansApiConnection() async {
-    final config = PlansApiConfig(
-      baseUrl: plansApiBaseUrlController.text.trim(),
-      apiKey: plansApiKeyController.text.trim(),
-    );
-    if (!config.isConfigured) {
-      statusMessage = 'أدخل عنوان السيرفر ومفتاح API أولاً.';
-      notifyListeners();
-      return;
-    }
+    final config = _managedPlansConfig;
 
     _setBusy('جاري اختبار سيرفر النسخ الاحتياطي...');
     try {
@@ -278,19 +269,12 @@ class MainDashboardController extends ChangeNotifier {
   }
 
   Future<void> backupPlansToServer() async {
-    final config = PlansApiConfig(
-      baseUrl: plansApiBaseUrlController.text.trim(),
-      apiKey: plansApiKeyController.text.trim(),
-    );
-    if (!config.isConfigured) {
-      statusMessage = 'أدخل عنوان السيرفر ومفتاح API أولاً.';
-      notifyListeners();
-      return;
-    }
+    final config = _managedPlansConfig;
 
     _setBusy('جاري رفع نسخة احتياطية للخطط إلى السيرفر...');
     try {
       await _plansApiSettingsRepository.save(config);
+      await _installmentPlanRepository.localStore.saveBackupConfig(config);
       final count =
           await _installmentPlanRepository.backupToServer(config: config);
       final at = await _installmentPlanRepository.lastBackupAt();
@@ -306,19 +290,12 @@ class MainDashboardController extends ChangeNotifier {
   }
 
   Future<void> restorePlansFromServer() async {
-    final config = PlansApiConfig(
-      baseUrl: plansApiBaseUrlController.text.trim(),
-      apiKey: plansApiKeyController.text.trim(),
-    );
-    if (!config.isConfigured) {
-      statusMessage = 'أدخل عنوان السيرفر ومفتاح API أولاً.';
-      notifyListeners();
-      return;
-    }
+    final config = _managedPlansConfig;
 
     _setBusy('جاري استعادة خطط الأقساط من السيرفر...');
     try {
       await _plansApiSettingsRepository.save(config);
+      await _installmentPlanRepository.localStore.saveBackupConfig(config);
       final count =
           await _installmentPlanRepository.restoreFromServer(config: config);
       await _loadSelectionPreferences();
@@ -777,9 +754,8 @@ class MainDashboardController extends ChangeNotifier {
         ? '0'
         : totalTamweel.toStringAsFixed(totalTamweel.truncateToDouble() == totalTamweel ? 0 : 2);
 
-    final plansApi = await _plansApiSettingsRepository.load();
-    plansApiBaseUrlController.text = plansApi.baseUrl;
-    plansApiKeyController.text = plansApi.apiKey;
+    plansApiBaseUrlController.text = _managedPlansConfig.baseUrl;
+    plansApiKeyController.text = '********';
     final lastBackup = await _installmentPlanRepository.lastBackupAt();
     lastPlansBackupLabel = lastBackup == null
         ? 'لم يُرفع باك أب بعد.'

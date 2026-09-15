@@ -178,31 +178,28 @@ class SettingsScreen extends StatelessWidget {
                           icon: Icons.cloud_done_rounded,
                         ),
                         const SizedBox(height: 18),
-                        Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            SizedBox(
-                              width: 360,
-                              child: TextField(
-                                controller: controller.plansApiBaseUrlController,
-                                decoration: const InputDecoration(
-                                  labelText: 'عنوان API',
-                                  hintText: 'http://IP:8787 أو https://plans.example.com',
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.lock_outline_rounded, color: AppColors.teal),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'إعدادات الخادم مُثبتة داخل التطبيق · الاتصال والرفع يتمان تلقائياً.',
+                                  style: GoogleFonts.cairo(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
-                            ),
-                            SizedBox(
-                              width: 280,
-                              child: TextField(
-                                controller: controller.plansApiKeyController,
-                                obscureText: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'مفتاح API',
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -230,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
                                   ? null
                                   : controller.enableAutomaticDailyBackup,
                               icon: const Icon(Icons.schedule_rounded),
-                              label: const Text('تفعيل رفع يومي تلقائي'),
+                              label: const Text('إعادة تهيئة الرفع التلقائي'),
                             ),
                             FilledButton.tonalIcon(
                               onPressed: controller.isBusy
@@ -252,13 +249,6 @@ class SettingsScreen extends StatelessWidget {
                                   : controller.testPlansApiConnection,
                               icon: const Icon(Icons.wifi_tethering_rounded),
                               label: const Text('اختبار الاتصال'),
-                            ),
-                            OutlinedButton.icon(
-                              onPressed: controller.isBusy
-                                  ? null
-                                  : controller.savePlansApiSettings,
-                              icon: const Icon(Icons.save_outlined),
-                              label: const Text('حفظ الإعدادات'),
                             ),
                           ],
                         ),
